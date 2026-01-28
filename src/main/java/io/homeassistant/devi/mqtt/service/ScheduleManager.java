@@ -185,7 +185,7 @@ public class ScheduleManager {
     private static String bytesToHex(byte[] bytes, int start, int end) {
         StringBuilder sb = new StringBuilder();
         for (int i = start; i < end; i++) {
-            sb.append(String.format("%02x", bytes[i]));
+            sb.append(String.format("%02x", bytes[i] & 0xFF));
         }
         return sb.toString();
     }
