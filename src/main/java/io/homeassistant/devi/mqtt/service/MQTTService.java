@@ -146,8 +146,13 @@ public class MQTTService {
         @Override
         public void messageArrived(String topic, MqttMessage message) {
             String payload = new String(message.getPayload());
-
-            InputCommand inputCmd = getInputCommand(topic, payload);
+            InputCommand inputCmd;
+            try {
+                inputCmd = getInputCommand(topic, payload);
+            } catch (IllegalArgumentException e) {
+                System.out.println("Ignoring unexpected topic: " + topic);
+                return;
+            }
 
             System.out.println(inputCmd.toString());
 
