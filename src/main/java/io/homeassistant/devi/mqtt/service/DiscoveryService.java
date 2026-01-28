@@ -26,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.TimeUnit;
 
 public class DiscoveryService {
 
@@ -284,12 +285,17 @@ public class DiscoveryService {
 
         System.out.println("Awaiting query completion");
 
-        // Wait for all async tasks to complete
+        // Wait for all async tasks to complete (with timeout)
         try {
-            latch.await();
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
+            boolean completed = latch.await(60, TimeUnit.SECONDS);
+            if (!completed) {
+                logger.warn("Timeout while waiting for thermostat serial numbers; proceeding with partial data");
+            }
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(5, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
+        } catch (java.util.concurrent.TimeoutException e) {
+            logger.warn("Timeout while awaiting serial number futures; proceeding");
         }
 
 
