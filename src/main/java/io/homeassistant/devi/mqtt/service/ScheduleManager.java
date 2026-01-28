@@ -24,6 +24,11 @@ public class ScheduleManager {
             throw new IllegalArgumentException("Invalid array length");
         }
 
+        // If this is the first part in a new cycle, clear any previous state.
+        if (partsReceivedMask == 0) {
+            clearWeeklySchedule();
+        }
+
         if (array.length == FIRST_PART_LENGTH * DAYS_IN_WEEK) {
             for (int day = 0; day < DAYS_IN_WEEK; day++) {
                 // Copy first part
@@ -41,7 +46,11 @@ public class ScheduleManager {
         }
 
         // Check if both parts have been received
-        return partsReceivedMask == 3;
+        boolean complete = partsReceivedMask == 3;
+        if (complete) {
+            partsReceivedMask = 0;
+        }
+        return complete;
     }
 
     public byte[] getWeeklySchedule() {
@@ -77,6 +86,7 @@ public class ScheduleManager {
             Gson gson = new Gson();
             Map<String, ArrayList<String>> scheduleMap = gson.fromJson(jsonString, Map.class);
 
+            clearWeeklySchedule();
             for (int day = 0; day < DAYS_IN_WEEK; day++) {
                 ArrayList<String> timePeriods = scheduleMap.get(DAY_NAMES[day]);
 
@@ -164,6 +174,12 @@ public class ScheduleManager {
         parts.put("firstPart", firstPart);
         parts.put("secondPart", secondPart);
         return parts;
+    }
+
+    private void clearWeeklySchedule() {
+        for (int i = 0; i < weeklySchedule.length; i++) {
+            weeklySchedule[i] = 0;
+        }
     }
 
     private static String bytesToHex(byte[] bytes, int start, int end) {
