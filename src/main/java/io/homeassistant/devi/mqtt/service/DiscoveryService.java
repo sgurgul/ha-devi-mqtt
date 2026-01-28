@@ -243,7 +243,7 @@ public class DiscoveryService {
         // Iterate over the list of devices, connect and extract SN
         for (Map<String, String> room : roomsList) {
             for (Map.Entry<String, String> entry : room.entrySet()) {
-                if(entry.getKey() != "devicePeerID")
+                if (!"devicePeerID".equals(entry.getKey()))
                     continue;
 
                 if(configMap.containsKey("peerId"))
@@ -263,7 +263,7 @@ public class DiscoveryService {
 
                     System.out.println("Parsing thermostat data - key: " + key + ", value: " + value);
 
-                    if(!room.containsKey("sys_serial_number") && key == "sys_serial_number") {
+                    if (!room.containsKey("serialNumber") && "sys_serial_number".equals(key)) {
                         room.put("serialNumber", value);
                         deviRegHandler.dispose();
 
