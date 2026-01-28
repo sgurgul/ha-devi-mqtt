@@ -74,7 +74,7 @@ for topic in topics:
         uofm = topics_units[topic]
 
         config["template"]["unit_of_measurement"] = uofm
-        if uofm=='kwh':
+        if uofm=='kWh':
             config["template"]["device_class"] = 'energy'
             config["template"]["state_class"]  = 'total_increasing'
         elif uofm=='dBm':
