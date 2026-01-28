@@ -126,7 +126,7 @@ public class ScheduleManager {
 
 
             return true;
-        } catch (JsonSyntaxException | NullPointerException e) {
+        } catch (JsonSyntaxException | NullPointerException | IllegalArgumentException e) {
             e.printStackTrace();
             return false;
         }
