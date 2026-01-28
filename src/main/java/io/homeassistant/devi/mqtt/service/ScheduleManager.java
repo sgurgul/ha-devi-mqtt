@@ -269,7 +269,8 @@ public class ScheduleManager {
                 for (int j = i + 1; j < bitMasks.length; j++) {
                     // Check for overlaps
                     if ((bitMasks[i] & bitMasks[j]) != 0) {
-                        return false;
+                        throw new IllegalArgumentException(
+                                "Overlapping time ranges: " + timeRanges.get(i) + " and " + timeRanges.get(j));
                     }
                 }
             }
@@ -283,6 +284,9 @@ public class ScheduleManager {
 
         int startBit = timeToBitIndex(splitRange[0]);
         int endBit = timeToBitIndex(splitRange[1]);
+        if (startBit < 0 || endBit < 0 || endBit > 48 || startBit >= endBit) {
+            throw new IllegalArgumentException("Invalid time range: " + decodedRange);
+        }
 
         // Create a bitmask with bits set from startBit to endBit - 1
         long bitmask = 0;
@@ -298,6 +302,15 @@ public class ScheduleManager {
         int minutes = Integer.parseInt(parts[1]);
 
         // Each hour is represented by 2 bits (30-minute intervals)
+        if (minutes != 0 && minutes != 30) {
+            throw new IllegalArgumentException("Invalid minutes in time: " + time);
+        }
+        if (hours == 24 && minutes == 0) {
+            return 48;  // (30 min slots across 24 hours)
+        }
+        if (hours < 0 || hours >= 24) {
+            throw new IllegalArgumentException("Invalid hours in time: " + time);
+        }
         return hours * 2 + (minutes == 30 ? 1 : 0);
     }
 
