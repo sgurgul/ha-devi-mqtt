@@ -13,8 +13,6 @@ public class MQTTService {
     private MqttClient client;
     private String statePublishPrefix =  "devi/state/%s/";
 
-    private boolean reconnectScheduled = false;
-
     private MqttConnectOptions options;
 
     public MQTTService(String broker, String port, String username, String password) {
@@ -50,6 +48,7 @@ public class MQTTService {
             client = new MqttClient(broker, MqttClient.generateClientId(), new MemoryPersistence());
             options = new MqttConnectOptions();
             options.setCleanSession(true);
+            options.setAutomaticReconnect(true);
             options.setUserName(username);
             options.setPassword(password.toCharArray());
 
@@ -58,18 +57,6 @@ public class MQTTService {
 
             // Initial connection
             connect();
-
-            // Subscriber thread
-            Thread subscriberThread = new Thread(() -> {
-                try {
-                    client.subscribe(commandsTopic);
-                } catch (MqttException e) {
-                    e.printStackTrace();
-                }
-            });
-
-            // Start subscriber thread
-            subscriberThread.start();
 
         } catch (MqttException e) {
             e.printStackTrace();
@@ -91,10 +78,7 @@ public class MQTTService {
                 System.out.println("Message published to topic " + topic + ": " + sensorValue);
             } catch (MqttException e) {
                 e.printStackTrace();
-                scheduleReconnect();
             }
-        } else {
-            scheduleReconnect();
         }
     }
 
@@ -110,54 +94,53 @@ public class MQTTService {
                 client.publish(topic, message);
             } catch (MqttException e) {
                 e.printStackTrace();
-                scheduleReconnect();
             }
-        } else {
-            scheduleReconnect();
         }
     }
 
     private void connect() {
-        try {
-            client.connect(options);
-            System.out.println("Connected to broker");
-            reconnectScheduled = false; // Reset reconnect flag on successful connection
-        } catch (MqttException e) {
-            e.printStackTrace();
-            // Retry connection after a delay
+        final int maxAttempts = 12;
+        int attempts = 0;
+        while (attempts < maxAttempts) {
             try {
-                Thread.sleep(5000);
-                connect();
-            } catch (InterruptedException ie) {
-                ie.printStackTrace();
+                client.connect(options);
+                System.out.println("Connected to broker");
+                return;
+            } catch (MqttException e) {
+                e.printStackTrace();
+                attempts++;
+                // Retry connection after a delay
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
             }
         }
+        System.out.println("Failed to connect to broker after " + maxAttempts + " attempts");
     }
 
-    private void scheduleReconnect() {
-        if (!reconnectScheduled) {
-            reconnectScheduled = true;
-            new Thread(() -> {
-                try {
-                    // Wait before trying to reconnect
-                    Thread.sleep(5000);
-                    connect();
-
-                    // It looks like callback is lost during disconnect, attach new
-                    client.setCallback(new MqttCallbackWithCommand());
-
-                } catch (InterruptedException ie) {
-                    ie.printStackTrace();
-                }
-            }).start();
+    private void subscribeCommands() {
+        if (client == null || !client.isConnected()) {
+            return;
+        }
+        try {
+            client.subscribe(commandsTopic);
+        } catch (MqttException e) {
+            e.printStackTrace();
         }
     }
 
-    public class MqttCallbackWithCommand implements MqttCallback {
+    public class MqttCallbackWithCommand implements MqttCallbackExtended {
+        @Override
+        public void connectComplete(boolean reconnect, String serverURI) {
+            subscribeCommands();
+        }
+
         @Override
         public void connectionLost(Throwable cause) {
             System.out.println("Connection lost. Reconnecting...");
-            scheduleReconnect();
         }
 
         @Override
