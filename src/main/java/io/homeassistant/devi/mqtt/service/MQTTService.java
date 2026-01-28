@@ -2,8 +2,11 @@ package io.homeassistant.devi.mqtt.service;
 
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MQTTService {
+    private static final Logger logger = LoggerFactory.getLogger(MQTTService.class);
 
     private String broker;
     private String commandsTopic = "devi/command/#"; // Subscribing topic
@@ -75,9 +78,9 @@ public class MQTTService {
 
                 // Publish message
                 client.publish(topic, message);
-                System.out.println("Message published to topic " + topic + ": " + sensorValue);
+                logger.debug("Message published to topic {}: {}", topic, sensorValue);
             } catch (MqttException e) {
-                e.printStackTrace();
+                logger.warn("Failed to publish sensor data to topic {}", String.format(statePublishPrefix, sensorId) + sensorName, e);
             }
         }
     }
@@ -93,7 +96,7 @@ public class MQTTService {
                 // Publish message
                 client.publish(topic, message);
             } catch (MqttException e) {
-                e.printStackTrace();
+                logger.warn("Failed to publish discovery message to topic {}", topic, e);
             }
         }
     }
@@ -104,10 +107,10 @@ public class MQTTService {
         while (attempts < maxAttempts) {
             try {
                 client.connect(options);
-                System.out.println("Connected to broker");
+                logger.info("Connected to broker");
                 return;
             } catch (MqttException e) {
-                e.printStackTrace();
+                logger.warn("Failed to connect to broker; retrying", e);
                 attempts++;
                 // Retry connection after a delay
                 try {
@@ -118,7 +121,7 @@ public class MQTTService {
                 }
             }
         }
-        System.out.println("Failed to connect to broker after " + maxAttempts + " attempts");
+        logger.error("Failed to connect to broker after {} attempts", maxAttempts);
     }
 
     private void subscribeCommands() {
@@ -128,7 +131,7 @@ public class MQTTService {
         try {
             client.subscribe(commandsTopic);
         } catch (MqttException e) {
-            e.printStackTrace();
+            logger.warn("Failed to subscribe to commands topic {}", commandsTopic, e);
         }
     }
 
@@ -140,7 +143,7 @@ public class MQTTService {
 
         @Override
         public void connectionLost(Throwable cause) {
-            System.out.println("Connection lost. Reconnecting...");
+            logger.warn("Connection lost. Reconnecting...", cause);
         }
 
         @Override
@@ -150,17 +153,17 @@ public class MQTTService {
             try {
                 inputCmd = getInputCommand(topic, payload);
             } catch (IllegalArgumentException e) {
-                System.out.println("Ignoring unexpected topic: " + topic);
+                logger.debug("Ignoring unexpected topic: {}", topic);
                 return;
             }
 
-            System.out.println(inputCmd.toString());
+            logger.debug(inputCmd.toString());
 
             try {
-                if(inputCommandMediator != null)
+                if (inputCommandMediator != null)
                     inputCommandMediator.notify(this, inputCmd);
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.warn("Failed to process MQTT command for topic {}", topic, e);
             }
 
             //System.out.println("Message received on topic " + topic + ": " + payload);
